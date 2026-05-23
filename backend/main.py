@@ -576,6 +576,71 @@ async def blocked_at_risk(db: AsyncSession = Depends(get_db)):
     return BlockedAtRisk(blocked=blocked, at_risk=at_risk)
 
 
+# ─── Code generation helpers ─────────────────────────────────────────────────
+
+@app.get("/pillars/{pillar_id}/next-kpi-code")
+async def next_kpi_code(pillar_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Pillar).where(Pillar.id == pillar_id))
+    pillar = result.scalar_one_or_none()
+    if not pillar:
+        raise HTTPException(404, "Pillar not found")
+
+    codes_result = await db.execute(
+        select(KPI.kpi_code).where(KPI.pillar_id == pillar_id)
+    )
+    existing_codes = [r[0] for r in codes_result.all()]
+
+    prefix = f"KPI.{pillar.code}."
+    max_header_seq = 0
+    max_kpi_seq_by_header: dict[int, int] = {}
+
+    for code in existing_codes:
+        if code.startswith(prefix):
+            parts = code[len(prefix):].split(".")
+            if len(parts) >= 2:
+                try:
+                    h, s = int(parts[0]), int(parts[1])
+                    max_header_seq = max(max_header_seq, h)
+                    max_kpi_seq_by_header[h] = max(max_kpi_seq_by_header.get(h, 0), s)
+                except ValueError:
+                    pass
+
+    if max_header_seq == 0:
+        kpi_code = f"KPI.{pillar.code}.1.1"
+        header_code = f"KPI.{pillar.code}.1"
+    else:
+        next_seq = max_kpi_seq_by_header.get(max_header_seq, 0) + 1
+        kpi_code = f"KPI.{pillar.code}.{max_header_seq}.{next_seq}"
+        header_code = f"KPI.{pillar.code}.{max_header_seq}"
+
+    return {"kpi_code": kpi_code, "header_code": header_code}
+
+
+@app.get("/kpis/{kpi_id}/next-task-code")
+async def next_task_code(kpi_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(KPI.kpi_code).where(KPI.id == kpi_id))
+    row = result.scalar_one_or_none()
+    if not row:
+        raise HTTPException(404, "KPI not found")
+    kpi_code = row
+
+    codes_result = await db.execute(
+        select(Task.task_code).where(Task.kpi_id == kpi_id)
+    )
+    existing_codes = [r[0] for r in codes_result.all() if r[0]]
+
+    prefix = f"{kpi_code}.T"
+    max_seq = 0
+    for tc in existing_codes:
+        if tc.startswith(prefix):
+            try:
+                max_seq = max(max_seq, int(tc[len(prefix):]))
+            except ValueError:
+                pass
+
+    return {"task_code": f"{kpi_code}.T{max_seq + 1}"}
+
+
 # ─── Health ──────────────────────────────────────────────────────────────────
 
 @app.get("/health")

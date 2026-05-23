@@ -167,8 +167,8 @@
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group"><label>KPI Code</label><input type="text" id="kpi_code" placeholder="KPI.STB.1.1" /></div>
-        <div class="form-group"><label>Header Code</label><input type="text" id="header_code" placeholder="KPI.STB.1" /></div>
+        <div class="form-group"><label>KPI Code</label><input type="text" id="kpi_code" readonly style="background:#f4f6f9;cursor:default;" placeholder="Select a pillar…" /></div>
+        <div class="form-group"><label>Header Code</label><input type="text" id="header_code" readonly style="background:#f4f6f9;cursor:default;" placeholder="Auto-generated" /></div>
         <div class="form-group full"><label>Header Name</label><input type="text" id="header_name" placeholder="Infrastructure Stability" /></div>
         <div class="form-group full"><label>KPI Name</label><input type="text" id="kpi_name" placeholder="Observability consolidated to 1 platform" /></div>
         <div class="form-group"><label>Pillar</label><select id="kpi_pillar_id"></select></div>
@@ -194,7 +194,7 @@
         <div class="form-group"><label>KPI</label><select id="task_kpi_id" style="width:100%;"></select></div>
         <div class="form-group"><label>Report Period</label><select id="task_period_id" style="width:100%;"></select></div>
         <div class="form-group full"><label>Task Name</label><input type="text" id="task_name" /></div>
-        <div class="form-group"><label>Task Code</label><input type="text" id="task_code" placeholder="Optional" /></div>
+        <div class="form-group"><label>Task Code</label><input type="text" id="task_code" readonly style="background:#f4f6f9;cursor:default;" placeholder="Select a KPI…" /></div>
         <div class="form-group"><label>Task Type</label><select id="task_type_id"></select></div>
         <div class="form-group"><label>Status</label><select id="task_status_id"></select></div>
         <div class="form-group"><label>% Complete (0–1)</label><input type="number" id="pct_complete" min="0" max="1" step="0.05" value="0" /></div>
@@ -333,8 +333,23 @@ function openKpiModal(kpi=null){
   document.getElementById('kpi_name').value   = kpi?.kpi_name||'';
   // pillars
   const ps=document.getElementById('kpi_pillar_id');
-  ps.innerHTML=pillars.map(p=>`<option value="${p.id}">${p.code} – ${p.name}</option>`).join('');
-  if(kpi) ps.value=kpi.pillar_id;
+  if(kpi){
+    ps.innerHTML=pillars.map(p=>`<option value="${p.id}">${p.code} – ${p.name}</option>`).join('');
+    ps.value=kpi.pillar_id;
+  } else {
+    ps.innerHTML='<option value="">— Select Pillar —</option>'+pillars.map(p=>`<option value="${p.id}">${p.code} – ${p.name}</option>`).join('');
+  }
+  // auto-generate KPI code when pillar is chosen (add mode only)
+  ps.onchange = async function(){
+    if(editKpiId) return;
+    const pid=this.value;
+    if(!pid){ document.getElementById('kpi_code').value=''; document.getElementById('header_code').value=''; return; }
+    try{
+      const d=await api(`/pillars/${pid}/next-kpi-code`);
+      document.getElementById('kpi_code').value=d.kpi_code;
+      document.getElementById('header_code').value=d.header_code;
+    } catch(e){ console.error('Could not fetch next KPI code',e); }
+  };
   // teams
   const ts=document.getElementById('kpi_team_id');
   ts.innerHTML=teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
@@ -356,7 +371,8 @@ async function saveKpi(){
     pillar_id:   parseInt(document.getElementById('kpi_pillar_id').value),
     team_id:     parseInt(document.getElementById('kpi_team_id').value),
   };
-  if(!body.kpi_code||!body.kpi_name){alert('KPI Code and Name are required.');return;}
+  if(!body.kpi_code){alert('Please select a pillar — the KPI code is auto-generated from your selection.');return;}
+  if(!body.kpi_name){alert('KPI Name is required.');return;}
   try{
     if(editKpiId){
       await api(`/kpis/${editKpiId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -384,6 +400,17 @@ function openTaskModal(task=null){
   const ks=document.getElementById('task_kpi_id');
   ks.innerHTML=kpis.map(k=>`<option value="${k.id}">${k.kpi_code}</option>`).join('');
   if(task) ks.value=task.kpi_id;
+  // auto-generate task code when KPI is chosen (add mode only)
+  ks.onchange = async function(){
+    if(editTaskId) return;
+    const kid=this.value;
+    if(!kid){ document.getElementById('task_code').value=''; return; }
+    try{
+      const d=await api(`/kpis/${kid}/next-task-code`);
+      document.getElementById('task_code').value=d.task_code;
+    } catch(e){ console.error('Could not fetch next task code',e); }
+  };
+  if(!task && ks.value) ks.dispatchEvent(new Event('change'));
   // periods
   const ps=document.getElementById('task_period_id');
   ps.innerHTML=periods.map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
