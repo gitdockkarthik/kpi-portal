@@ -145,10 +145,12 @@
     <div class="vtab" data-view="pillar">Pillar View</div>
     <div class="vtab" data-view="taskdrill">Task Drill-down</div>
     <div class="vtab" data-view="blocked">Blocked &amp; At Risk</div>
+    <div class="vtab" data-view="delays">Delays &amp; Slippage</div>
   </div>
 
   <!-- ──────────── VP SUMMARY ──────────── -->
   <div id="view-vp">
+    <div class="cards2" id="vp-stat-cards" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-bottom:24px;"></div>
     <div class="gauge-row">
       <div class="gauge-card">
         <div class="gauge-val" id="vp-overall" style="color:var(--accent)">—</div>
@@ -229,6 +231,71 @@
         <div id="atrisk-list"></div>
       </div>
     </div>
+    <div style="margin-top:28px;">
+      <p class="sec-hdr" style="margin-bottom:12px;">⚠️ Delayed Tasks (Due Date Exceeds Quarter End)</p>
+      <div id="delays-in-blocked"></div>
+    </div>
+  </div>
+
+  <!-- ──────────── DELAYS & SLIPPAGE ──────────── -->
+  <div id="view-delays" class="hidden">
+    <div class="cards2" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-bottom:28px;">
+      <div class="kcard" style="border-top-color:#1e90ff">
+        <div class="kcard-top">
+          <div><div class="kcard-val" id="del-committed" style="color:#1e90ff">—</div><div class="kcard-lbl">Total Committed Tasks</div></div>
+          <span style="font-size:1.4rem">📋</span>
+        </div>
+      </div>
+      <div class="kcard" style="border-top-color:#28a745">
+        <div class="kcard-top">
+          <div><div class="kcard-val" id="del-ontrack" style="color:#28a745">—</div><div class="kcard-lbl">On Track</div></div>
+          <span style="font-size:1.4rem">✅</span>
+        </div>
+      </div>
+      <div class="kcard" style="border-top-color:#dc3545">
+        <div class="kcard-top">
+          <div><div class="kcard-val" id="del-delayed" style="color:#dc3545">—</div><div class="kcard-lbl">Delayed</div></div>
+          <span style="font-size:1.4rem">⚠️</span>
+        </div>
+      </div>
+      <div class="kcard" style="border-top-color:#ffc107">
+        <div class="kcard-top">
+          <div><div class="kcard-val" id="del-avgslip" style="color:#856404">—</div><div class="kcard-lbl">Avg Slippage Days</div></div>
+          <span style="font-size:1.4rem">📅</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="sec-hdr" style="margin-bottom:12px;">Committed vs Current Status</p>
+    <div class="tbl-wrap" style="margin-bottom:32px;">
+      <table>
+        <thead><tr>
+          <th>Task Name</th><th>Team</th><th>KPI Code</th>
+          <th>Quarter Committed</th><th>Due Date</th><th>Quarter End</th>
+          <th>Slippage</th><th>% Complete</th><th>Status</th><th>RAG</th>
+        </tr></thead>
+        <tbody id="delays-tbody"><tr><td colspan="10" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-box">
+        <h4>Slippage by Team</h4>
+        <canvas id="slippageTeamChart"></canvas>
+      </div>
+      <div style="display:flex;flex-direction:column;min-width:0;">
+        <p class="sec-hdr" style="margin-bottom:12px;">Slippage by KPI</p>
+        <div class="tbl-wrap" style="flex:1;">
+          <table>
+            <thead><tr>
+              <th>KPI Code</th><th>KPI Name</th><th>Team</th>
+              <th>Delayed Tasks</th><th>Total Slippage</th>
+            </tr></thead>
+            <tbody id="slip-kpi-tbody"><tr><td colspan="5" class="empty">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </main>
 
@@ -250,11 +317,30 @@ function progBar(p,r){ return `<div style="display:flex;align-items:center;gap:6
 async function api(path){ const r=await fetch(CONFIG.apiBase+path); return r.json(); }
 
 let teams=[], pillars=[], kpis=[], periods=[];
-let pillarChartInst=null, teamChartInst=null;
+let pillarChartInst=null, teamChartInst=null, slippageChartInst=null;
 
 // ─── VP Summary ────────────────────────────────────────────────
 async function loadVP(){
-  const vp = await api('/dashboard/vp-summary');
+  const [vp, allTasks, delData] = await Promise.all([
+    api('/dashboard/vp-summary'),
+    api('/tasks'),
+    api('/dashboard/delays'),
+  ]);
+  // 5 status stat cards
+  const sc = document.getElementById('vp-stat-cards');
+  const done     = allTasks.filter(t=>t.status_value==='Done').length;
+  const inProg   = allTasks.filter(t=>t.status_value==='In Progress').length;
+  const notStart = allTasks.filter(t=>t.status_value==='Not Started').length;
+  sc.innerHTML = [
+    {v:allTasks.length, l:'Total Tasks',  c:'#1e90ff'},
+    {v:done,            l:'Done',         c:'#28a745'},
+    {v:inProg,          l:'In Progress',  c:'#1e90ff'},
+    {v:notStart,        l:'Not Started',  c:'#6b7a90'},
+    {v:delData.summary.delayed, l:'Delayed', c:'#dc3545'},
+  ].map(x=>`<div class="kcard" style="border-top-color:${x.c}">
+    <div class="kcard-val" style="color:${x.c};font-size:1.4rem">${x.v}</div>
+    <div class="kcard-lbl">${x.l}</div>
+  </div>`).join('');
   const overall = vp.overall;
   const r = rag(overall);
   document.getElementById('vp-overall').textContent = (overall*100).toFixed(1)+'%';
@@ -396,8 +482,11 @@ async function loadTaskDrill(){
   tbody.innerHTML=data.map(t=>{
     const pct=parseFloat(t.pct_complete);
     const r=rag(pct);
+    const per=periods.find(p=>p.id===t.report_period_id);
+    const isDel=per?.end_date&&t.due_date&&t.due_date>per.end_date;
+    const delBadge=isDel?`<span style="background:#dc3545;color:#fff;padding:1px 7px;border-radius:20px;font-size:.7rem;font-weight:600;margin-left:5px;white-space:nowrap;">Delayed</span>`:'';
     return `<tr>
-      <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${t.task_name}">${t.task_name}</td>
+      <td style="max-width:160px;white-space:nowrap;overflow:hidden;"><span title="${t.task_name}">${t.task_name}</span>${delBadge}</td>
       <td><strong style="font-size:.78rem">${t.kpi_code||''}</strong></td>
       <td>${t.pillar_code||''}</td>
       <td>${t.team_name||''}</td>
@@ -413,7 +502,10 @@ async function loadTaskDrill(){
 
 // ─── Blocked & At Risk ────────────────────────────────────────
 async function loadBlocked(){
-  const data = await api('/dashboard/blocked-at-risk');
+  const [data, delData] = await Promise.all([
+    api('/dashboard/blocked-at-risk'),
+    api('/dashboard/delays'),
+  ]);
 
   document.getElementById('blocked-count').textContent = data.blocked.length;
   document.getElementById('atrisk-count').textContent  = data.at_risk.length;
@@ -436,11 +528,106 @@ async function loadBlocked(){
   al.innerHTML=data.at_risk.length
     ? data.at_risk.map(renderItem).join('')
     : '<div class="empty">No at-risk tasks</div>';
+
+  // Delayed tasks section
+  const dc=document.getElementById('delays-in-blocked');
+  if(!delData.delayed_tasks.length){
+    dc.innerHTML='<div class="empty" style="padding:20px;">No delayed tasks detected. ✅</div>';
+  } else {
+    dc.innerHTML=`<div class="tbl-wrap"><table>
+      <thead><tr><th>Task Name</th><th>Team</th><th>KPI Code</th><th>Quarter</th><th>Due Date</th><th>Quarter End</th><th>Slippage</th><th>RAG</th></tr></thead>
+      <tbody>${delData.delayed_tasks.map(t=>`<tr style="background:rgba(220,53,69,.02)">
+        <td style="border-left:3px solid #dc3545;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${t.task_name}">${t.task_name}</td>
+        <td>${t.team}</td>
+        <td><strong style="font-size:.78rem">${t.kpi_code}</strong></td>
+        <td>${t.report_period}</td>
+        <td>${t.due_date||'—'}</td>
+        <td>${t.period_end_date||'—'}</td>
+        <td><span style="background:#dc3545;color:#fff;padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:700;white-space:nowrap;">+${t.slippage_days}d</span></td>
+        <td>${badge(t.rag)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  }
+}
+
+// ─── Delays & Slippage ───────────────────────────────────────
+async function loadDelays(){
+  const pId=document.getElementById('dash-period').value;
+  const q=pId?`?report_period_id=${pId}`:'';
+  const data=await api('/dashboard/delays'+q);
+  const s=data.summary;
+
+  document.getElementById('del-committed').textContent=s.total_committed;
+  document.getElementById('del-ontrack').textContent=s.on_track;
+  document.getElementById('del-delayed').textContent=s.delayed;
+  document.getElementById('del-avgslip').textContent=s.avg_slippage_days.toFixed(1)+'d';
+
+  // Main delayed table
+  const tbody=document.getElementById('delays-tbody');
+  if(!data.delayed_tasks.length){
+    tbody.innerHTML=`<tr><td colspan="10" style="padding:52px;text-align:center;">
+      <div style="font-size:2.8rem;margin-bottom:10px;">✅</div>
+      <div style="font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:4px;">All tasks are on track!</div>
+      <div style="font-size:.83rem;color:var(--muted);">No delays detected for the selected period.</div>
+    </td></tr>`;
+  } else {
+    tbody.innerHTML=data.delayed_tasks.map(t=>`<tr style="background:rgba(220,53,69,.02)">
+      <td style="border-left:3px solid #dc3545;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${t.task_name}">${t.task_name}</td>
+      <td>${t.team}</td>
+      <td><strong style="font-size:.78rem">${t.kpi_code}</strong></td>
+      <td>${t.report_period}</td>
+      <td>${t.due_date||'—'}</td>
+      <td>${t.period_end_date||'—'}</td>
+      <td><span style="background:#dc3545;color:#fff;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:700;white-space:nowrap;">+${t.slippage_days}d</span></td>
+      <td>${progBar(t.pct_complete,t.rag)}</td>
+      <td>${statusBadge(t.status)}</td>
+      <td>${badge(t.rag)}</td>
+    </tr>`).join('');
+  }
+
+  // Slippage by KPI table (zebra)
+  const kpiTbody=document.getElementById('slip-kpi-tbody');
+  kpiTbody.innerHTML=data.slippage_by_kpi.length
+    ? data.slippage_by_kpi.map((k,i)=>`<tr style="${i%2?'background:var(--surface)':''}">
+        <td><strong style="font-size:.78rem">${k.kpi_code}</strong></td>
+        <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${k.kpi_name}">${k.kpi_name}</td>
+        <td>${k.team}</td>
+        <td><span class="badge badge-red">${k.delayed_tasks}</span></td>
+        <td><strong style="color:#dc3545">${k.total_slippage_days}d</strong></td>
+      </tr>`).join('')
+    : `<tr><td colspan="5" class="empty">No slippage data</td></tr>`;
+
+  // Slippage by team horizontal bar chart
+  if(slippageChartInst){ slippageChartInst.destroy(); slippageChartInst=null; }
+  if(data.slippage_by_team.length){
+    const maxSlip=Math.max(...data.slippage_by_team.map(t=>t.total_slippage_days),1);
+    slippageChartInst=new Chart(document.getElementById('slippageTeamChart'),{
+      type:'bar',
+      data:{
+        labels:data.slippage_by_team.map(t=>t.team),
+        datasets:[{
+          label:'Total Slippage Days',
+          data:data.slippage_by_team.map(t=>t.total_slippage_days),
+          backgroundColor:data.slippage_by_team.map(t=>`rgba(220,53,69,${(0.3+0.6*t.total_slippage_days/maxSlip).toFixed(2)})`),
+          borderRadius:4,
+        }]
+      },
+      options:{
+        indexAxis:'y',
+        responsive:true,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:ctx=>`${ctx.raw}d slippage · ${data.slippage_by_team[ctx.dataIndex].delayed_tasks} task(s) delayed`}}
+        },
+        scales:{x:{beginAtZero:true,ticks:{callback:v=>v+'d'}}}
+      }
+    });
+  }
 }
 
 // ─── View switching ───────────────────────────────────────────
-const views = ['vp','kpiprog','pillar','taskdrill','blocked'];
-const loaders = { vp:loadVP, kpiprog:loadKPIProg, pillar:loadPillarView, taskdrill:loadTaskDrill, blocked:loadBlocked };
+const views = ['vp','kpiprog','pillar','taskdrill','blocked','delays'];
+const loaders = { vp:loadVP, kpiprog:loadKPIProg, pillar:loadPillarView, taskdrill:loadTaskDrill, blocked:loadBlocked, delays:loadDelays };
 
 document.querySelectorAll('.vtab').forEach(t=>{
   t.addEventListener('click',()=>{

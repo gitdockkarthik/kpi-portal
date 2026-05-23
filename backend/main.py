@@ -589,6 +589,113 @@ async def blocked_at_risk(db: AsyncSession = Depends(get_db)):
     return BlockedAtRisk(blocked=blocked, at_risk=at_risk)
 
 
+# ─── Dashboard: Delays & Slippage ──────────────────────────────────────────
+
+@app.get("/dashboard/delays")
+async def delays_dashboard(
+    report_period_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    q = select(Task).order_by(Task.id)
+    if report_period_id:
+        q = q.where(Task.report_period_id == report_period_id)
+    result = await db.execute(q)
+    tasks = result.scalars().all()
+
+    total_committed = 0
+    on_track = 0
+    delayed_tasks = []
+
+    for tsk in tasks:
+        await db.refresh(tsk, ["kpi", "status", "task_type", "report_period"])
+        if tsk.kpi:
+            await db.refresh(tsk.kpi, ["pillar", "team"])
+
+        rp = tsk.report_period
+        if not rp or not rp.end_date or not tsk.due_date:
+            continue
+
+        total_committed += 1
+        pct = float(tsk.pct_complete)
+
+        if tsk.due_date > rp.end_date:
+            slippage = (tsk.due_date - rp.end_date).days
+            delayed_tasks.append({
+                "task_id": tsk.id,
+                "task_code": tsk.task_code or "",
+                "task_name": tsk.task_name,
+                "team": tsk.kpi.team.name if tsk.kpi and tsk.kpi.team else "",
+                "pillar": tsk.kpi.pillar.code if tsk.kpi and tsk.kpi.pillar else "",
+                "kpi_code": tsk.kpi.kpi_code if tsk.kpi else "",
+                "kpi_name": tsk.kpi.kpi_name if tsk.kpi else "",
+                "report_period": rp.label,
+                "period_end_date": rp.end_date.isoformat(),
+                "due_date": tsk.due_date.isoformat(),
+                "slippage_days": slippage,
+                "pct_complete": pct,
+                "rag": rag(pct),
+                "status": tsk.status.value if tsk.status else "",
+            })
+        else:
+            on_track += 1
+
+    delayed_tasks.sort(key=lambda x: x["slippage_days"], reverse=True)
+    delayed_count = len(delayed_tasks)
+    total_slippage = sum(d["slippage_days"] for d in delayed_tasks)
+    avg_slippage = round(total_slippage / delayed_count, 1) if delayed_count else 0.0
+
+    team_agg: dict = {}
+    for item in delayed_tasks:
+        tn = item["team"]
+        if tn not in team_agg:
+            team_agg[tn] = {"delayed_tasks": 0, "total_slippage_days": 0}
+        team_agg[tn]["delayed_tasks"] += 1
+        team_agg[tn]["total_slippage_days"] += item["slippage_days"]
+
+    slippage_by_team = sorted([
+        {
+            "team": tn,
+            "delayed_tasks": agg["delayed_tasks"],
+            "total_slippage_days": agg["total_slippage_days"],
+            "avg_slippage_days": round(agg["total_slippage_days"] / agg["delayed_tasks"], 1),
+        }
+        for tn, agg in team_agg.items()
+    ], key=lambda x: x["total_slippage_days"], reverse=True)
+
+    kpi_agg: dict = {}
+    for item in delayed_tasks:
+        kc = item["kpi_code"]
+        if kc not in kpi_agg:
+            kpi_agg[kc] = {"kpi_name": item["kpi_name"], "team": item["team"],
+                            "delayed_tasks": 0, "total_slippage_days": 0}
+        kpi_agg[kc]["delayed_tasks"] += 1
+        kpi_agg[kc]["total_slippage_days"] += item["slippage_days"]
+
+    slippage_by_kpi = sorted([
+        {
+            "kpi_code": kc,
+            "kpi_name": agg["kpi_name"],
+            "team": agg["team"],
+            "delayed_tasks": agg["delayed_tasks"],
+            "total_slippage_days": agg["total_slippage_days"],
+        }
+        for kc, agg in kpi_agg.items()
+    ], key=lambda x: x["total_slippage_days"], reverse=True)
+
+    return {
+        "summary": {
+            "total_committed": total_committed,
+            "on_track": on_track,
+            "delayed": delayed_count,
+            "avg_slippage_days": avg_slippage,
+            "total_slippage_days": total_slippage,
+        },
+        "delayed_tasks": delayed_tasks,
+        "slippage_by_team": slippage_by_team,
+        "slippage_by_kpi": slippage_by_kpi,
+    }
+
+
 # ─── Code generation helpers ─────────────────────────────────────────────────
 
 @app.get("/pillars/{pillar_id}/next-kpi-code")

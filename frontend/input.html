@@ -201,7 +201,7 @@
         <div class="form-group"><label>Effort Days</label><input type="number" id="effort_days" min="0" step="0.5" /></div>
         <div class="form-group"><label>Actual Days</label><input type="number" id="actual_days" min="0" step="0.5" /></div>
         <div class="form-group"><label>Start Date</label><input type="date" id="start_date" /></div>
-        <div class="form-group"><label>Due Date</label><input type="date" id="due_date" /></div>
+        <div class="form-group"><label>Due Date</label><input type="date" id="due_date" /><div id="due-date-warning" style="display:none;margin-top:5px;padding:6px 9px;background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.4);border-radius:5px;font-size:.74rem;color:#856404;line-height:1.45;"></div></div>
         <div class="form-group full"><label>Blockers</label><textarea id="blockers"></textarea></div>
         <div class="form-group full"><label>Notes</label><textarea id="notes"></textarea></div>
       </div>
@@ -433,6 +433,26 @@ function openTaskModal(task=null){
   document.getElementById('due_date').value     = task?.due_date||'';
   document.getElementById('blockers').value     = task?.blockers||'';
   document.getElementById('notes').value        = task?.notes||'';
+
+  // Due-date / quarter-end warning
+  const checkDueDateWarning = () => {
+    const pid = parseInt(document.getElementById('task_period_id').value);
+    const period = periods.find(p => p.id === pid);
+    const dueVal = document.getElementById('due_date').value;
+    const wEl = document.getElementById('due-date-warning');
+    if(!wEl) return;
+    if(period?.end_date && dueVal && dueVal > period.end_date){
+      const slip = Math.round((new Date(dueVal+'T00:00:00') - new Date(period.end_date+'T00:00:00')) / 86400000);
+      wEl.textContent = `⚠️ This due date exceeds the ${period.label} quarter end (${period.end_date}) by ${slip} day${slip!==1?'s':''}. Task will be flagged as delayed.`;
+      wEl.style.display = 'block';
+    } else {
+      wEl.style.display = 'none';
+    }
+  };
+  ps.onchange = checkDueDateWarning;
+  document.getElementById('due_date').onchange = checkDueDateWarning;
+  checkDueDateWarning();
+
   document.getElementById('taskModal').classList.add('open');
 }
 
