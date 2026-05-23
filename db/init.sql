@@ -83,7 +83,7 @@ INSERT INTO teams (name, description) VALUES
 -- SEED: Report Period
 -- ───────────────────────────────────────────
 INSERT INTO report_periods (period_date, label, start_date, end_date) VALUES
-    ('2026-04-01', 'Q2 2026', '2026-04-01', '2026-06-30');
+    ('2026-06-30', 'Q2 2026', '2026-04-01', '2026-06-30');
 
 -- ───────────────────────────────────────────
 -- SEED: Status Lookup

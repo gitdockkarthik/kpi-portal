@@ -354,7 +354,7 @@ function openAddPeriod(){
     if(!start||!label){ alert('Please select a start date — the label is auto-generated from it.'); return; }
     try{
       await api('/report-periods',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        period_date:start, label, start_date:start, end_date:end||null,
+        period_date:end||start, label, start_date:start, end_date:end||null,
       })});
       closeModal(); loadPeriods();
     } catch(e){ alert('Error: '+e.message); }
@@ -379,7 +379,7 @@ function openEditPeriod(p){
     if(!label){ alert('Label is required'); return; }
     try{
       await api(`/report-periods/${p.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        period_date:start||p.period_date, label, start_date:start||null, end_date:end||null,
+        period_date:end||start||p.period_date, label, start_date:start||null, end_date:end||null,
       })});
       closeModal(); loadPeriods();
     } catch(e){ alert('Error: '+e.message); }
