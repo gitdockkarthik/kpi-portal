@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KPI Portal</title>
+  <style>
+    /* ── reset & tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --nav-bg:   #0d1b2a;
+      --nav-text: #c8d6e5;
+      --nav-hi:   #1e90ff;
+      --content:  #ffffff;
+      --surface:  #f4f6f9;
+      --border:   #e0e4ea;
+      --text:     #1a2332;
+      --muted:    #6b7a90;
+      --green:    #28a745;
+      --amber:    #ffc107;
+      --red:      #dc3545;
+      --accent:   #1e90ff;
+    }
+    body { display: flex; min-height: 100vh; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--surface); color: var(--text); }
+
+    /* ── sidebar ────────────────────────────────────────── */
+    nav {
+      width: 240px; min-height: 100vh; background: var(--nav-bg);
+      display: flex; flex-direction: column; flex-shrink: 0;
+      position: sticky; top: 0; height: 100vh;
+    }
+    .nav-logo {
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .nav-logo span { font-size: 1.25rem; font-weight: 700; color: #fff; letter-spacing: .5px; }
+    .nav-logo small { display: block; font-size: .7rem; color: var(--nav-text); margin-top: 2px; letter-spacing: .3px; }
+    nav ul { list-style: none; padding: 16px 0; flex: 1; }
+    nav ul li a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 24px; color: var(--nav-text);
+      text-decoration: none; font-size: .88rem;
+      border-left: 3px solid transparent;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    nav ul li a:hover { background: rgba(255,255,255,.05); color: #fff; }
+    nav ul li a.active { border-left-color: var(--nav-hi); background: rgba(30,144,255,.12); color: #fff; }
+    nav ul li a .ico { font-size: 1rem; width: 20px; text-align: center; }
+    .nav-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,.08); }
+    .nav-footer span { font-size: .72rem; color: var(--muted); }
+
+    /* ── main ───────────────────────────────────────────── */
+    main { flex: 1; padding: 40px 48px; background: var(--content); }
+
+    .hero { margin-bottom: 48px; }
+    .hero h1 { font-size: 2rem; font-weight: 700; color: var(--text); }
+    .hero p { margin-top: 8px; color: var(--muted); font-size: 1rem; max-width: 600px; line-height: 1.6; }
+
+    /* ── cards grid ─────────────────────────────────────── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 28px;
+      text-decoration: none; color: var(--text);
+      transition: box-shadow .2s, transform .2s;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,.1); transform: translateY(-2px); }
+    .card-icon {
+      width: 48px; height: 48px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+    }
+    .card-icon.blue  { background: rgba(30,144,255,.12); }
+    .card-icon.green { background: rgba(40,167,69,.12); }
+    .card-icon.amber { background: rgba(255,193,7,.12); }
+    .card-icon.red   { background: rgba(220,53,69,.12); }
+    .card h3 { font-size: 1.05rem; font-weight: 600; }
+    .card p  { font-size: .85rem; color: var(--muted); line-height: 1.5; }
+    .card-arrow { margin-top: auto; font-size: .8rem; color: var(--accent); font-weight: 500; }
+
+    /* ── stats bar ──────────────────────────────────────── */
+    .stats { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 40px; }
+    .stat {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px 24px; min-width: 140px;
+    }
+    .stat-val { font-size: 1.8rem; font-weight: 700; }
+    .stat-lbl { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+    .green-txt { color: var(--green); }
+    .amber-txt { color: var(--amber); }
+    .red-txt   { color: var(--red); }
+    .blue-txt  { color: var(--accent); }
+
+    /* ── section header ─────────────────────────────────── */
+    .section-hdr { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <span>KPI Portal</span>
+    <small>Infrastructure &amp; Ops</small>
+  </div>
+  <ul>
+    <li><a href="index.html" class="active"><span class="ico">🏠</span> Home</a></li>
+    <li><a href="input.html"><span class="ico">✏️</span> Data Input</a></li>
+    <li><a href="dashboard.html"><span class="ico">📊</span> Dashboard</a></li>
+    <li><a href="admin.html"><span class="ico">⚙️</span> Admin</a></li>
+  </ul>
+  <div class="nav-footer"><span>Apr 2026 Cycle</span></div>
+</nav>
+
+<main>
+  <div class="hero">
+    <h1>Infrastructure &amp; Operations KPI Portal</h1>
+    <p>Track progress across pillars, teams, and initiatives. All KPI metrics are computed live from task data — no manual RAG overrides.</p>
+  </div>
+
+  <div id="statsBar" class="stats">
+    <div class="stat"><div class="stat-val blue-txt" id="st-kpis">—</div><div class="stat-lbl">Total KPIs</div></div>
+    <div class="stat"><div class="stat-val" id="st-tasks">—</div><div class="stat-lbl">Total Tasks</div></div>
+    <div class="stat"><div class="stat-val green-txt" id="st-green">—</div><div class="stat-lbl">Green KPIs</div></div>
+    <div class="stat"><div class="stat-val amber-txt" id="st-amber">—</div><div class="stat-lbl">Amber KPIs</div></div>
+    <div class="stat"><div class="stat-val red-txt" id="st-red">—</div><div class="stat-lbl">Red KPIs</div></div>
+    <div class="stat"><div class="stat-val red-txt" id="st-blocked">—</div><div class="stat-lbl">Blocked Tasks</div></div>
+  </div>
+
+  <p class="section-hdr">Sections</p>
+  <div class="cards">
+    <a class="card" href="input.html">
+      <div class="card-icon blue">✏️</div>
+      <h3>Data Input</h3>
+      <p>Add, edit, and delete KPIs and tasks. Filter by team to manage your own data.</p>
+      <span class="card-arrow">Go to Input →</span>
+    </a>
+    <a class="card" href="dashboard.html">
+      <div class="card-icon green">📊</div>
+      <h3>Dashboard</h3>
+      <p>5 views: VP Summary, KPI Progress, Pillar View, Task Drill-down, and Blocked &amp; At Risk.</p>
+      <span class="card-arrow">Go to Dashboard →</span>
+    </a>
+    <a class="card" href="admin.html">
+      <div class="card-icon amber">⚙️</div>
+      <h3>Admin</h3>
+      <p>Manage teams, pillars, status lookup values, and task type lookups.</p>
+      <span class="card-arrow">Go to Admin →</span>
+    </a>
+  </div>
+</main>
+
+<script>
+  const CONFIG = { apiBase: 'http://localhost:8000' };
+
+  async function loadStats() {
+    try {
+      const [kpisRes, tasksRes, vpRes, blockedRes] = await Promise.all([
+        fetch(`${CONFIG.apiBase}/kpis`),
+        fetch(`${CONFIG.apiBase}/tasks`),
+        fetch(`${CONFIG.apiBase}/dashboard/vp-summary`),
+        fetch(`${CONFIG.apiBase}/dashboard/blocked-at-risk`),
+      ]);
+      const kpis    = await kpisRes.json();
+      const tasks   = await tasksRes.json();
+      const vp      = await vpRes.json();
+      const blocked = await blockedRes.json();
+
+      // KPI counts via kpi-progress
+      const progRes = await fetch(`${CONFIG.apiBase}/dashboard/kpi-progress`);
+      const prog = await progRes.json();
+      const green  = prog.filter(k => k.rag === 'Green').length;
+      const amber  = prog.filter(k => k.rag === 'Amber').length;
+      const red    = prog.filter(k => k.rag === 'Red').length;
+
+      document.getElementById('st-kpis').textContent    = kpis.length;
+      document.getElementById('st-tasks').textContent   = tasks.length;
+      document.getElementById('st-green').textContent   = green;
+      document.getElementById('st-amber').textContent   = amber;
+      document.getElementById('st-red').textContent     = red;
+      document.getElementById('st-blocked').textContent = blocked.blocked.length;
+    } catch (e) {
+      console.error('Stats load failed:', e);
+    }
+  }
+
+  loadStats();
+</script>
+</body>
+</html>

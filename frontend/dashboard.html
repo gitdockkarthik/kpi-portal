@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard – KPI Portal</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    :root {
+      --nav-bg:#0d1b2a; --nav-text:#c8d6e5; --nav-hi:#1e90ff;
+      --content:#ffffff; --surface:#f4f6f9; --border:#e0e4ea;
+      --text:#1a2332; --muted:#6b7a90;
+      --green:#28a745; --amber:#ffc107; --red:#dc3545; --accent:#1e90ff;
+    }
+    body { display:flex; min-height:100vh; font-family:'Segoe UI',system-ui,sans-serif; background:var(--surface); color:var(--text); }
+
+    nav { width:240px; min-height:100vh; background:var(--nav-bg); display:flex; flex-direction:column; flex-shrink:0; position:sticky; top:0; height:100vh; }
+    .nav-logo { padding:28px 24px 20px; border-bottom:1px solid rgba(255,255,255,.08); }
+    .nav-logo span { font-size:1.25rem; font-weight:700; color:#fff; }
+    .nav-logo small { display:block; font-size:.7rem; color:var(--nav-text); margin-top:2px; }
+    nav ul { list-style:none; padding:16px 0; flex:1; }
+    nav ul li a { display:flex; align-items:center; gap:10px; padding:11px 24px; color:var(--nav-text); text-decoration:none; font-size:.88rem; border-left:3px solid transparent; transition:background .15s,color .15s; }
+    nav ul li a:hover { background:rgba(255,255,255,.05); color:#fff; }
+    nav ul li a.active { border-left-color:var(--nav-hi); background:rgba(30,144,255,.12); color:#fff; }
+    nav ul li a .ico { font-size:1rem; width:20px; text-align:center; }
+    .nav-footer { padding:16px 24px; border-top:1px solid rgba(255,255,255,.08); }
+    .nav-footer span { font-size:.72rem; color:var(--muted); }
+
+    main { flex:1; padding:32px 40px; background:var(--content); min-width:0; }
+    .page-hdr { margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+    .page-hdr h1 { font-size:1.6rem; font-weight:700; }
+
+    /* view tabs */
+    .view-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:28px; }
+    .vtab { padding:8px 18px; border-radius:20px; cursor:pointer; font-size:.83rem; font-weight:500; color:var(--muted); background:var(--surface); border:1px solid var(--border); transition:all .15s; }
+    .vtab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .vtab:hover:not(.active) { background:#e8eef5; }
+
+    /* filter bar */
+    .filter-bar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:24px; padding:14px 18px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+    .filter-bar label { font-size:.82rem; color:var(--muted); font-weight:500; }
+    select { padding:7px 10px; border:1px solid var(--border); border-radius:6px; font-size:.85rem; color:var(--text); background:#fff; }
+    select:focus { outline:none; border-color:var(--accent); }
+
+    /* cards */
+    .cards2 { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:16px; margin-bottom:32px; }
+    .kcard { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; border-top:3px solid; }
+    .kcard-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+    .kcard-val { font-size:1.6rem; font-weight:700; }
+    .kcard-lbl { font-size:.75rem; color:var(--muted); margin-top:4px; }
+    .kcard-badge { font-size:.72rem; font-weight:600; padding:3px 8px; border-radius:20px; }
+
+    /* progress bar */
+    .prog-wrap { height:8px; background:#e4e8ed; border-radius:4px; overflow:hidden; margin-top:8px; }
+    .prog-fill { height:100%; border-radius:4px; transition:width .4s; }
+
+    /* table */
+    .tbl-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:.83rem; }
+    th { background:var(--surface); padding:10px 12px; text-align:left; font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); border-bottom:1px solid var(--border); white-space:nowrap; }
+    td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    tr:hover td { background:rgba(30,144,255,.03); }
+    .badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:.72rem; font-weight:600; }
+    .badge-green { background:rgba(40,167,69,.12); color:var(--green); }
+    .badge-amber { background:rgba(255,193,7,.15); color:#856404; }
+    .badge-red   { background:rgba(220,53,69,.1); color:var(--red); }
+    .badge-blue  { background:rgba(30,144,255,.1); color:var(--accent); }
+    .badge-gray  { background:rgba(0,0,0,.06); color:var(--muted); }
+
+    /* section headers */
+    .sec-hdr { font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:10px; }
+
+    /* chart containers */
+    .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:32px; }
+    .chart-box { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; }
+    .chart-box h4 { font-size:.85rem; font-weight:600; margin-bottom:16px; color:var(--text); }
+    .chart-box canvas { max-height:260px; }
+    @media (max-width: 900px) { .chart-row { grid-template-columns:1fr; } }
+
+    /* overall gauge */
+    .gauge-row { display:flex; gap:24px; margin-bottom:32px; flex-wrap:wrap; }
+    .gauge-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; text-align:center; min-width:200px; }
+    .gauge-val { font-size:3rem; font-weight:800; }
+    .gauge-lbl { font-size:.8rem; color:var(--muted); margin-top:4px; }
+
+    /* pillar accordion */
+    .pillar-block { background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:16px; overflow:hidden; }
+    .pillar-hdr { display:flex; align-items:center; gap:12px; padding:14px 18px; cursor:pointer; background:var(--surface); transition:background .15s; }
+    .pillar-hdr:hover { background:#e8eef5; }
+    .pillar-hdr-left { flex:1; display:flex; align-items:center; gap:10px; }
+    .pillar-code { font-weight:700; font-size:.9rem; }
+    .pillar-name { font-size:.85rem; color:var(--muted); }
+    .pillar-body { display:none; padding:0 18px 16px; background:#fff; }
+    .pillar-body.open { display:block; }
+
+    /* blocked/at-risk */
+    .section-split { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+    @media (max-width:900px) { .section-split { grid-template-columns:1fr; } }
+    .risk-box { border-radius:10px; border:1px solid var(--border); overflow:hidden; }
+    .risk-box-hdr { padding:14px 18px; display:flex; align-items:center; justify-content:space-between; }
+    .risk-box-hdr h4 { font-size:.9rem; font-weight:600; }
+    .risk-count { font-size:.75rem; font-weight:700; padding:2px 8px; border-radius:20px; }
+    .risk-item { padding:12px 18px; border-top:1px solid var(--border); background:#fff; }
+    .risk-item-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .risk-item-name { font-size:.84rem; font-weight:500; flex:1; }
+    .risk-meta { font-size:.75rem; color:var(--muted); margin-top:3px; }
+    .risk-blocker { font-size:.76rem; color:var(--red); margin-top:3px; }
+
+    .hidden { display:none !important; }
+    .empty { text-align:center; padding:32px; color:var(--muted); font-size:.9rem; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <span>KPI Portal</span>
+    <small>Infrastructure &amp; Ops</small>
+  </div>
+  <ul>
+    <li><a href="index.html"><span class="ico">🏠</span> Home</a></li>
+    <li><a href="input.html"><span class="ico">✏️</span> Data Input</a></li>
+    <li><a href="dashboard.html" class="active"><span class="ico">📊</span> Dashboard</a></li>
+    <li><a href="admin.html"><span class="ico">⚙️</span> Admin</a></li>
+  </ul>
+  <div class="nav-footer"><span>Apr 2026 Cycle</span></div>
+</nav>
+
+<main>
+  <div class="page-hdr">
+    <h1>Dashboard</h1>
+  </div>
+
+  <div class="view-tabs">
+    <div class="vtab active" data-view="vp">VP Summary</div>
+    <div class="vtab" data-view="kpiprog">KPI Progress</div>
+    <div class="vtab" data-view="pillar">Pillar View</div>
+    <div class="vtab" data-view="taskdrill">Task Drill-down</div>
+    <div class="vtab" data-view="blocked">Blocked &amp; At Risk</div>
+  </div>
+
+  <!-- ──────────── VP SUMMARY ──────────── -->
+  <div id="view-vp">
+    <div class="gauge-row">
+      <div class="gauge-card">
+        <div class="gauge-val" id="vp-overall" style="color:var(--accent)">—</div>
+        <div class="gauge-lbl">Overall Completion</div>
+        <div class="prog-wrap" style="margin-top:12px;height:10px;">
+          <div class="prog-fill" id="vp-overall-bar" style="background:var(--accent);width:0%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-box">
+        <h4>Pillar Completion</h4>
+        <canvas id="pillarChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4>Team Completion</h4>
+        <canvas id="teamChart"></canvas>
+      </div>
+    </div>
+    <p class="sec-hdr">Pillars</p>
+    <div class="cards2" id="vp-pillar-cards"></div>
+    <p class="sec-hdr">Teams</p>
+    <div class="cards2" id="vp-team-cards"></div>
+  </div>
+
+  <!-- ──────────── KPI PROGRESS ──────────── -->
+  <div id="view-kpiprog" class="hidden">
+    <div class="filter-bar">
+      <label>Pillar</label>
+      <select id="kp-pillar"><option value="">All Pillars</option></select>
+      <label>Team</label>
+      <select id="kp-team"><option value="">All Teams</option></select>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>KPI Code</th><th>KPI Name</th><th>Pillar</th><th>Team</th><th>Progress</th><th>RAG</th><th>Tasks</th></tr></thead>
+        <tbody id="kp-tbody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ──────────── PILLAR VIEW ──────────── -->
+  <div id="view-pillar" class="hidden">
+    <div id="pillar-blocks"></div>
+  </div>
+
+  <!-- ──────────── TASK DRILL ──────────── -->
+  <div id="view-taskdrill" class="hidden">
+    <div class="filter-bar">
+      <label>Team</label>
+      <select id="td-team"><option value="">All Teams</option></select>
+      <label>KPI</label>
+      <select id="td-kpi"><option value="">All KPIs</option></select>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Task</th><th>KPI</th><th>Pillar</th><th>Team</th><th>Status</th><th>Progress</th><th>RAG</th><th>Effort</th><th>Actual</th><th>Blockers</th></tr></thead>
+        <tbody id="td-tbody"><tr><td colspan="10" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ──────────── BLOCKED & AT RISK ──────────── -->
+  <div id="view-blocked" class="hidden">
+    <div class="section-split">
+      <div class="risk-box">
+        <div class="risk-box-hdr" style="background:rgba(220,53,69,.06);">
+          <h4 style="color:var(--red)">🚫 Blocked</h4>
+          <span class="risk-count" style="background:rgba(220,53,69,.12);color:var(--red);" id="blocked-count">0</span>
+        </div>
+        <div id="blocked-list"></div>
+      </div>
+      <div class="risk-box">
+        <div class="risk-box-hdr" style="background:rgba(255,193,7,.06);">
+          <h4 style="color:#856404">⚠️ At Risk (Amber)</h4>
+          <span class="risk-count" style="background:rgba(255,193,7,.15);color:#856404;" id="atrisk-count">0</span>
+        </div>
+        <div id="atrisk-list"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const CONFIG = { apiBase: 'http://localhost:8000' };
+
+// ─── helpers ─────────────────────────────────────────────────
+const rag = p => p>=0.75?'Green':p>=0.4?'Amber':'Red';
+const ragColor = r => r==='Green'?'#28a745':r==='Amber'?'#ffc107':'#dc3545';
+const ragBg    = r => r==='Green'?'rgba(40,167,69,.12)':r==='Amber'?'rgba(255,193,7,.15)':'rgba(220,53,69,.1)';
+const ragTxt   = r => r==='Green'?'#28a745':r==='Amber'?'#856404':'#dc3545';
+function badge(r){ return `<span class="badge" style="background:${ragBg(r)};color:${ragTxt(r)}">${r}</span>`; }
+function statusBadge(s){
+  const m={'Done':'badge-green','In Progress':'badge-blue','Blocked':'badge-red','Not Started':'badge-gray'};
+  return `<span class="badge ${m[s]||'badge-gray'}">${s}</span>`;
+}
+function progBar(p,r){ return `<div style="display:flex;align-items:center;gap:6px;min-width:100px;"><div class="prog-wrap" style="flex:1"><div class="prog-fill" style="width:${(p*100).toFixed(0)}%;background:${ragColor(r)}"></div></div><span style="font-size:.78rem;white-space:nowrap">${(p*100).toFixed(0)}%</span></div>`; }
+
+async function api(path){ const r=await fetch(CONFIG.apiBase+path); return r.json(); }
+
+let teams=[], pillars=[], kpis=[];
+let pillarChartInst=null, teamChartInst=null;
+
+// ─── VP Summary ────────────────────────────────────────────────
+async function loadVP(){
+  const vp = await api('/dashboard/vp-summary');
+  const overall = vp.overall;
+  const r = rag(overall);
+  document.getElementById('vp-overall').textContent = (overall*100).toFixed(1)+'%';
+  document.getElementById('vp-overall').style.color = ragColor(r);
+  document.getElementById('vp-overall-bar').style.width = (overall*100).toFixed(1)+'%';
+  document.getElementById('vp-overall-bar').style.background = ragColor(r);
+
+  // Pillar cards
+  const pc = document.getElementById('vp-pillar-cards');
+  pc.innerHTML = vp.pillars.map(p=>{
+    const r2=p.rag; const col=ragColor(r2);
+    return `<div class="kcard" style="border-top-color:${col}">
+      <div class="kcard-top">
+        <div><div class="kcard-val" style="color:${col}">${(p.pct_complete*100).toFixed(1)}%</div><div class="kcard-lbl">${p.name}</div></div>
+        <span class="kcard-badge" style="background:${ragBg(r2)};color:${ragTxt(r2)}">${r2}</span>
+      </div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${(p.pct_complete*100).toFixed(1)}%;background:${col}"></div></div>
+    </div>`;
+  }).join('');
+
+  // Team cards
+  const tc = document.getElementById('vp-team-cards');
+  tc.innerHTML = vp.teams.map(t=>{
+    const r2=t.rag; const col=ragColor(r2);
+    return `<div class="kcard" style="border-top-color:${col}">
+      <div class="kcard-top">
+        <div><div class="kcard-val" style="color:${col}">${(t.pct_complete*100).toFixed(1)}%</div><div class="kcard-lbl">${t.name}</div></div>
+        <span class="kcard-badge" style="background:${ragBg(r2)};color:${ragTxt(r2)}">${r2}</span>
+      </div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${(t.pct_complete*100).toFixed(1)}%;background:${col}"></div></div>
+    </div>`;
+  }).join('');
+
+  // Charts
+  const pillarLabels = vp.pillars.map(p=>p.name.split('–').pop().trim());
+  const pillarData   = vp.pillars.map(p=>parseFloat((p.pct_complete*100).toFixed(1)));
+  const pillarColors = vp.pillars.map(p=>ragColor(p.rag));
+
+  if(pillarChartInst) pillarChartInst.destroy();
+  pillarChartInst = new Chart(document.getElementById('pillarChart'),{
+    type:'bar',
+    data:{ labels:pillarLabels, datasets:[{ data:pillarData, backgroundColor:pillarColors, borderRadius:6, borderSkipped:false }] },
+    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ y:{ min:0, max:100, ticks:{callback:v=>v+'%'} } } }
+  });
+
+  const teamLabels = vp.teams.map(t=>t.name);
+  const teamData   = vp.teams.map(t=>parseFloat((t.pct_complete*100).toFixed(1)));
+  const teamColors = vp.teams.map(t=>ragColor(t.rag));
+
+  if(teamChartInst) teamChartInst.destroy();
+  teamChartInst = new Chart(document.getElementById('teamChart'),{
+    type:'bar',
+    data:{ labels:teamLabels, datasets:[{ data:teamData, backgroundColor:teamColors, borderRadius:6, borderSkipped:false }] },
+    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ y:{ min:0, max:100, ticks:{callback:v=>v+'%'} } } }
+  });
+}
+
+// ─── KPI Progress ─────────────────────────────────────────────
+async function loadKPIProg(){
+  const pId=document.getElementById('kp-pillar').value;
+  const tId=document.getElementById('kp-team').value;
+  let q='?';
+  if(pId) q+=`pillar_id=${pId}&`;
+  if(tId) q+=`team_id=${tId}&`;
+  const data = await api('/dashboard/kpi-progress'+q);
+  const tbody=document.getElementById('kp-tbody');
+  if(!data.length){ tbody.innerHTML=`<tr><td colspan="7" class="empty">No KPIs found.</td></tr>`; return; }
+  tbody.innerHTML=data.map(k=>`<tr>
+    <td><strong>${k.kpi_code}</strong></td>
+    <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${k.kpi_name}">${k.kpi_name}</td>
+    <td>${k.pillar_code}</td>
+    <td>${k.team_name}</td>
+    <td>${progBar(k.pct_complete, k.rag)}</td>
+    <td>${badge(k.rag)}</td>
+    <td>${k.task_count}</td>
+  </tr>`).join('');
+}
+
+// ─── Pillar View ──────────────────────────────────────────────
+async function loadPillarView(){
+  const data = await api('/dashboard/pillar-view');
+  const container=document.getElementById('pillar-blocks');
+  container.innerHTML=data.map((p,i)=>`
+    <div class="pillar-block">
+      <div class="pillar-hdr" onclick="togglePillar(${i})">
+        <div class="pillar-hdr-left">
+          <span class="pillar-code">${p.pillar_code}</span>
+          <span class="pillar-name">${p.pillar_name}</span>
+        </div>
+        <span style="margin-right:12px">${progBar(p.pct_complete, p.rag)}</span>
+        <span>${badge(p.rag)}</span>
+        <span style="margin-left:12px;color:var(--muted);font-size:.8rem" id="toggle-${i}">▼</span>
+      </div>
+      <div class="pillar-body ${i===0?'open':''}" id="pbody-${i}">
+        <table style="margin-top:8px;width:100%;border-collapse:collapse;font-size:.82rem;">
+          <thead><tr>
+            <th style="padding:8px 10px;background:var(--surface);border-bottom:1px solid var(--border);font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">KPI Code</th>
+            <th style="padding:8px 10px;background:var(--surface);border-bottom:1px solid var(--border);font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">KPI Name</th>
+            <th style="padding:8px 10px;background:var(--surface);border-bottom:1px solid var(--border);font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">Team</th>
+            <th style="padding:8px 10px;background:var(--surface);border-bottom:1px solid var(--border);font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">Progress</th>
+            <th style="padding:8px 10px;background:var(--surface);border-bottom:1px solid var(--border);font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">RAG</th>
+            <th style="padding:8px 10px;background:var(--surface);border-bottom:1px solid var(--border);font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">Tasks</th>
+          </tr></thead>
+          <tbody>
+          ${p.kpis.map(k=>`<tr>
+            <td style="padding:8px 10px;border-bottom:1px solid var(--border);"><strong>${k.kpi_code}</strong></td>
+            <td style="padding:8px 10px;border-bottom:1px solid var(--border);max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${k.kpi_name}">${k.kpi_name}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${k.team_name}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${progBar(k.pct_complete, k.rag)}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${badge(k.rag)}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid var(--border);">${k.task_count}</td>
+          </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `).join('');
+}
+
+function togglePillar(i){
+  const body=document.getElementById(`pbody-${i}`);
+  const tog=document.getElementById(`toggle-${i}`);
+  body.classList.toggle('open');
+  tog.textContent=body.classList.contains('open')?'▲':'▼';
+}
+
+// ─── Task Drill ───────────────────────────────────────────────
+async function loadTaskDrill(){
+  const tId=document.getElementById('td-team').value;
+  const kId=document.getElementById('td-kpi').value;
+  let q='?';
+  if(tId) q+=`team_id=${tId}&`;
+  if(kId) q+=`kpi_id=${kId}&`;
+  const data = await api('/dashboard/task-drill'+q);
+  const tbody=document.getElementById('td-tbody');
+  if(!data.length){ tbody.innerHTML=`<tr><td colspan="10" class="empty">No tasks found.</td></tr>`; return; }
+  tbody.innerHTML=data.map(t=>`<tr>
+    <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${t.task_name}">${t.task_name}</td>
+    <td><strong style="font-size:.78rem">${t.kpi_code}</strong></td>
+    <td>${t.pillar_code}</td>
+    <td>${t.team_name}</td>
+    <td>${statusBadge(t.status)}</td>
+    <td>${progBar(t.pct_complete, t.rag)}</td>
+    <td>${badge(t.rag)}</td>
+    <td>${t.effort_days??'—'}</td>
+    <td>${t.actual_days??'—'}</td>
+    <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--red);font-size:.77rem;" title="${t.blockers||''}">${t.blockers||''}</td>
+  </tr>`).join('');
+}
+
+// ─── Blocked & At Risk ────────────────────────────────────────
+async function loadBlocked(){
+  const data = await api('/dashboard/blocked-at-risk');
+
+  document.getElementById('blocked-count').textContent = data.blocked.length;
+  document.getElementById('atrisk-count').textContent  = data.at_risk.length;
+
+  const renderItem = t => `<div class="risk-item">
+    <div class="risk-item-top">
+      <span class="risk-item-name">${t.task_name}</span>
+      <span>${statusBadge(t.status)}</span>
+    </div>
+    <div class="risk-meta">${t.kpi_code} · ${t.team_name} · ${(t.pct_complete*100).toFixed(0)}% complete</div>
+    ${t.blockers?`<div class="risk-blocker">⚠ ${t.blockers}</div>`:''}
+  </div>`;
+
+  const bl=document.getElementById('blocked-list');
+  bl.innerHTML=data.blocked.length
+    ? data.blocked.map(renderItem).join('')
+    : '<div class="empty">No blocked tasks 🎉</div>';
+
+  const al=document.getElementById('atrisk-list');
+  al.innerHTML=data.at_risk.length
+    ? data.at_risk.map(renderItem).join('')
+    : '<div class="empty">No at-risk tasks</div>';
+}
+
+// ─── View switching ───────────────────────────────────────────
+const views = ['vp','kpiprog','pillar','taskdrill','blocked'];
+const loaders = { vp:loadVP, kpiprog:loadKPIProg, pillar:loadPillarView, taskdrill:loadTaskDrill, blocked:loadBlocked };
+
+document.querySelectorAll('.vtab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.vtab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const v=t.dataset.view;
+    views.forEach(id=>{ document.getElementById(`view-${id}`).classList.toggle('hidden', id!==v); });
+    loaders[v]();
+  });
+});
+
+// ─── Init lookups ─────────────────────────────────────────────
+async function initLookups(){
+  [teams, pillars, kpis] = await Promise.all([
+    api('/teams'), api('/pillars'), api('/kpis'),
+  ]);
+  // KPI progress filters
+  document.getElementById('kp-pillar').innerHTML =
+    '<option value="">All Pillars</option>'+pillars.map(p=>`<option value="${p.id}">${p.code} – ${p.name}</option>`).join('');
+  document.getElementById('kp-team').innerHTML =
+    '<option value="">All Teams</option>'+teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+
+  document.getElementById('td-team').innerHTML =
+    '<option value="">All Teams</option>'+teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  document.getElementById('td-kpi').innerHTML =
+    '<option value="">All KPIs</option>'+kpis.map(k=>`<option value="${k.id}">${k.kpi_code}</option>`).join('');
+
+  document.getElementById('kp-pillar').addEventListener('change', loadKPIProg);
+  document.getElementById('kp-team').addEventListener('change', loadKPIProg);
+  document.getElementById('td-team').addEventListener('change', loadTaskDrill);
+  document.getElementById('td-kpi').addEventListener('change', loadTaskDrill);
+}
+
+(async ()=>{
+  await initLookups();
+  loadVP();
+})();
+</script>
+</body>
+</html>

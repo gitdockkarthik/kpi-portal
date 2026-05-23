@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin – KPI Portal</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    :root {
+      --nav-bg:#0d1b2a; --nav-text:#c8d6e5; --nav-hi:#1e90ff;
+      --content:#ffffff; --surface:#f4f6f9; --border:#e0e4ea;
+      --text:#1a2332; --muted:#6b7a90;
+      --green:#28a745; --amber:#ffc107; --red:#dc3545; --accent:#1e90ff;
+    }
+    body { display:flex; min-height:100vh; font-family:'Segoe UI',system-ui,sans-serif; background:var(--surface); color:var(--text); }
+
+    nav { width:240px; min-height:100vh; background:var(--nav-bg); display:flex; flex-direction:column; flex-shrink:0; position:sticky; top:0; height:100vh; }
+    .nav-logo { padding:28px 24px 20px; border-bottom:1px solid rgba(255,255,255,.08); }
+    .nav-logo span { font-size:1.25rem; font-weight:700; color:#fff; }
+    .nav-logo small { display:block; font-size:.7rem; color:var(--nav-text); margin-top:2px; }
+    nav ul { list-style:none; padding:16px 0; flex:1; }
+    nav ul li a { display:flex; align-items:center; gap:10px; padding:11px 24px; color:var(--nav-text); text-decoration:none; font-size:.88rem; border-left:3px solid transparent; transition:background .15s,color .15s; }
+    nav ul li a:hover { background:rgba(255,255,255,.05); color:#fff; }
+    nav ul li a.active { border-left-color:var(--nav-hi); background:rgba(30,144,255,.12); color:#fff; }
+    nav ul li a .ico { font-size:1rem; width:20px; text-align:center; }
+    .nav-footer { padding:16px 24px; border-top:1px solid rgba(255,255,255,.08); }
+    .nav-footer span { font-size:.72rem; color:var(--muted); }
+
+    main { flex:1; padding:32px 40px; background:var(--content); min-width:0; }
+    .page-hdr { margin-bottom:28px; }
+    .page-hdr h1 { font-size:1.6rem; font-weight:700; }
+    .page-hdr p  { color:var(--muted); font-size:.9rem; margin-top:4px; }
+
+    /* tabs */
+    .tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:28px; flex-wrap:wrap; }
+    .tab { padding:10px 22px; cursor:pointer; font-size:.88rem; font-weight:500; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; }
+    .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+    /* admin sections */
+    .admin-section { display:none; }
+    .admin-section.active { display:block; }
+
+    /* table */
+    .tbl-wrap { overflow-x:auto; margin-top:8px; }
+    table { width:100%; border-collapse:collapse; font-size:.84rem; }
+    th { background:var(--surface); padding:10px 14px; text-align:left; font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); border-bottom:1px solid var(--border); white-space:nowrap; }
+    td { padding:10px 14px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    tr:hover td { background:rgba(30,144,255,.03); }
+
+    /* inline edit row */
+    .add-row { display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+    .add-row input, .add-row select { padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:.84rem; color:var(--text); background:#fff; min-width:160px; }
+    .add-row input:focus { outline:none; border-color:var(--accent); }
+
+    /* buttons */
+    .btn { padding:7px 16px; border:none; border-radius:6px; cursor:pointer; font-size:.82rem; font-weight:500; transition:opacity .15s; }
+    .btn:hover { opacity:.85; }
+    .btn-primary { background:var(--accent); color:#fff; }
+    .btn-danger  { background:var(--red); color:#fff; }
+    .btn-sm { padding:4px 10px; font-size:.76rem; }
+    .btn-edit { background:rgba(30,144,255,.1); color:var(--accent); }
+    .btn-save { background:rgba(40,167,69,.1); color:var(--green); }
+
+    /* modal */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:100; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:#fff; border-radius:12px; width:480px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+    .modal-hdr { padding:20px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+    .modal-hdr h3 { font-size:1rem; font-weight:600; }
+    .modal-close { cursor:pointer; font-size:1.4rem; color:var(--muted); background:none; border:none; line-height:1; }
+    .modal-body { padding:20px 24px; display:flex; flex-direction:column; gap:14px; }
+    .modal-footer { padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; }
+    .form-group { display:flex; flex-direction:column; gap:5px; }
+    .form-group label { font-size:.78rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+    .form-group input, .form-group textarea { padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:.85rem; }
+    .form-group input:focus { outline:none; border-color:var(--accent); }
+
+    .empty { text-align:center; padding:32px; color:var(--muted); font-size:.9rem; }
+
+    /* period table */
+    .period-add { display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+    .period-add input { padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:.84rem; min-width:140px; }
+    .period-add input:focus { outline:none; border-color:var(--accent); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <span>KPI Portal</span>
+    <small>Infrastructure &amp; Ops</small>
+  </div>
+  <ul>
+    <li><a href="index.html"><span class="ico">🏠</span> Home</a></li>
+    <li><a href="input.html"><span class="ico">✏️</span> Data Input</a></li>
+    <li><a href="dashboard.html"><span class="ico">📊</span> Dashboard</a></li>
+    <li><a href="admin.html" class="active"><span class="ico">⚙️</span> Admin</a></li>
+  </ul>
+  <div class="nav-footer"><span>Apr 2026 Cycle</span></div>
+</nav>
+
+<main>
+  <div class="page-hdr">
+    <h1>Admin</h1>
+    <p>Manage reference data: teams, pillars, report periods, and lookup values.</p>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="teams">Teams</div>
+    <div class="tab" data-tab="pillars">Pillars</div>
+    <div class="tab" data-tab="periods">Report Periods</div>
+    <div class="tab" data-tab="statuses">Status Lookup</div>
+    <div class="tab" data-tab="tasktypes">Task Type Lookup</div>
+  </div>
+
+  <!-- ─── Teams ─── -->
+  <div class="admin-section active" id="sec-teams">
+    <div class="add-row">
+      <input type="text" id="new-team-name" placeholder="Team name" />
+      <input type="text" id="new-team-desc" placeholder="Description (optional)" style="min-width:240px;" />
+      <button class="btn btn-primary" onclick="addTeam()">+ Add Team</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Description</th><th>Actions</th></tr></thead>
+        <tbody id="teams-tbody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── Pillars ─── -->
+  <div class="admin-section" id="sec-pillars">
+    <div class="add-row">
+      <input type="text" id="new-pillar-code" placeholder="Code (e.g. STB)" style="min-width:100px;" />
+      <input type="text" id="new-pillar-name" placeholder="Pillar name" />
+      <button class="btn btn-primary" onclick="addPillar()">+ Add Pillar</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Code</th><th>Name</th><th>Actions</th></tr></thead>
+        <tbody id="pillars-tbody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── Report Periods ─── -->
+  <div class="admin-section" id="sec-periods">
+    <div class="period-add">
+      <input type="date" id="new-period-date" />
+      <input type="text" id="new-period-label" placeholder="Label (e.g. Apr 2026)" />
+      <button class="btn btn-primary" onclick="addPeriod()">+ Add Period</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Date</th><th>Label</th></tr></thead>
+        <tbody id="periods-tbody"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── Status Lookup ─── -->
+  <div class="admin-section" id="sec-statuses">
+    <div class="add-row">
+      <input type="text" id="new-status-val" placeholder="Status value" />
+      <button class="btn btn-primary" onclick="addStatus()">+ Add Status</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Value</th><th>Actions</th></tr></thead>
+        <tbody id="statuses-tbody"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── Task Type Lookup ─── -->
+  <div class="admin-section" id="sec-tasktypes">
+    <div class="add-row">
+      <input type="text" id="new-tasktype-val" placeholder="Task type value" />
+      <button class="btn btn-primary" onclick="addTaskType()">+ Add Task Type</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Value</th><th>Actions</th></tr></thead>
+        <tbody id="tasktypes-tbody"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- ─── Edit Modals ─── -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3 id="editModalTitle">Edit</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="editModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="editSaveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CONFIG = { apiBase: 'http://localhost:8000' };
+
+async function api(path, opts={}){
+  const r = await fetch(CONFIG.apiBase+path, opts);
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ─── Tabs ──────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(`sec-${t.dataset.tab}`).classList.add('active');
+    ({teams:loadTeams, pillars:loadPillars, periods:loadPeriods, statuses:loadStatuses, tasktypes:loadTaskTypes})[t.dataset.tab]();
+  });
+});
+
+// ─── Teams ─────────────────────────────────────────────────
+async function loadTeams(){
+  const data = await api('/teams');
+  const tbody = document.getElementById('teams-tbody');
+  tbody.innerHTML = data.map(t=>`<tr>
+    <td>${t.id}</td>
+    <td>${t.name}</td>
+    <td>${t.description||''}</td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-sm btn-edit" onclick='openEditTeam(${JSON.stringify(t)})'>Edit</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteTeam(${t.id})">Delete</button>
+    </td>
+  </tr>`).join('') || `<tr><td colspan="4" class="empty">No teams.</td></tr>`;
+}
+
+async function addTeam(){
+  const name = document.getElementById('new-team-name').value.trim();
+  const desc = document.getElementById('new-team-desc').value.trim();
+  if(!name){ alert('Name required'); return; }
+  await api('/teams',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,description:desc||null})});
+  document.getElementById('new-team-name').value='';
+  document.getElementById('new-team-desc').value='';
+  loadTeams();
+}
+
+async function deleteTeam(id){
+  if(!confirm('Delete this team?')) return;
+  await api(`/teams/${id}`,{method:'DELETE'});
+  loadTeams();
+}
+
+function openEditTeam(t){
+  document.getElementById('editModalTitle').textContent='Edit Team';
+  document.getElementById('editModalBody').innerHTML=`
+    <div class="form-group"><label>Name</label><input type="text" id="ed-name" value="${t.name}" /></div>
+    <div class="form-group"><label>Description</label><input type="text" id="ed-desc" value="${t.description||''}" /></div>
+  `;
+  document.getElementById('editSaveBtn').onclick=async ()=>{
+    await api(`/teams/${t.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name:document.getElementById('ed-name').value.trim(),
+      description:document.getElementById('ed-desc').value.trim()||null,
+    })});
+    closeModal(); loadTeams();
+  };
+  document.getElementById('editModal').classList.add('open');
+}
+
+// ─── Pillars ───────────────────────────────────────────────
+async function loadPillars(){
+  const data = await api('/pillars');
+  const tbody = document.getElementById('pillars-tbody');
+  tbody.innerHTML = data.map(p=>`<tr>
+    <td>${p.id}</td>
+    <td><strong>${p.code}</strong></td>
+    <td>${p.name}</td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-sm btn-edit" onclick='openEditPillar(${JSON.stringify(p)})'>Edit</button>
+      <button class="btn btn-sm btn-danger" onclick="deletePillar(${p.id})">Delete</button>
+    </td>
+  </tr>`).join('') || `<tr><td colspan="4" class="empty">No pillars.</td></tr>`;
+}
+
+async function addPillar(){
+  const code = document.getElementById('new-pillar-code').value.trim().toUpperCase();
+  const name = document.getElementById('new-pillar-name').value.trim();
+  if(!code||!name){ alert('Code and name required'); return; }
+  await api('/pillars',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,name})});
+  document.getElementById('new-pillar-code').value='';
+  document.getElementById('new-pillar-name').value='';
+  loadPillars();
+}
+
+async function deletePillar(id){
+  if(!confirm('Delete this pillar?')) return;
+  await api(`/pillars/${id}`,{method:'DELETE'});
+  loadPillars();
+}
+
+function openEditPillar(p){
+  document.getElementById('editModalTitle').textContent='Edit Pillar';
+  document.getElementById('editModalBody').innerHTML=`
+    <div class="form-group"><label>Code</label><input type="text" id="ed-code" value="${p.code}" /></div>
+    <div class="form-group"><label>Name</label><input type="text" id="ed-name" value="${p.name}" /></div>
+  `;
+  document.getElementById('editSaveBtn').onclick=async ()=>{
+    await api(`/pillars/${p.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      code:document.getElementById('ed-code').value.trim().toUpperCase(),
+      name:document.getElementById('ed-name').value.trim(),
+    })});
+    closeModal(); loadPillars();
+  };
+  document.getElementById('editModal').classList.add('open');
+}
+
+// ─── Report Periods ────────────────────────────────────────
+async function loadPeriods(){
+  const data = await api('/report-periods');
+  const tbody = document.getElementById('periods-tbody');
+  tbody.innerHTML = data.map(p=>`<tr>
+    <td>${p.id}</td>
+    <td>${p.period_date}</td>
+    <td>${p.label}</td>
+  </tr>`).join('') || `<tr><td colspan="3" class="empty">No periods.</td></tr>`;
+}
+
+async function addPeriod(){
+  const date  = document.getElementById('new-period-date').value;
+  const label = document.getElementById('new-period-label').value.trim();
+  if(!date||!label){ alert('Date and label required'); return; }
+  await api('/report-periods',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({period_date:date,label})});
+  document.getElementById('new-period-date').value='';
+  document.getElementById('new-period-label').value='';
+  loadPeriods();
+}
+
+// ─── Status Lookup ─────────────────────────────────────────
+async function loadStatuses(){
+  const data = await api('/status-lookup');
+  const tbody = document.getElementById('statuses-tbody');
+  tbody.innerHTML = data.map(s=>`<tr>
+    <td>${s.id}</td>
+    <td>${s.value}</td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-sm btn-edit" onclick='openEditLookup("status",${JSON.stringify(s)})'>Edit</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteLookup('status',${s.id})">Delete</button>
+    </td>
+  </tr>`).join('') || `<tr><td colspan="3" class="empty">No statuses.</td></tr>`;
+}
+
+async function addStatus(){
+  const val = document.getElementById('new-status-val').value.trim();
+  if(!val){ alert('Value required'); return; }
+  await api('/status-lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:val})});
+  document.getElementById('new-status-val').value='';
+  loadStatuses();
+}
+
+// ─── Task Type Lookup ──────────────────────────────────────
+async function loadTaskTypes(){
+  const data = await api('/task-type-lookup');
+  const tbody = document.getElementById('tasktypes-tbody');
+  tbody.innerHTML = data.map(t=>`<tr>
+    <td>${t.id}</td>
+    <td>${t.value}</td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-sm btn-edit" onclick='openEditLookup("tasktype",${JSON.stringify(t)})'>Edit</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteLookup('tasktype',${t.id})">Delete</button>
+    </td>
+  </tr>`).join('') || `<tr><td colspan="3" class="empty">No task types.</td></tr>`;
+}
+
+async function addTaskType(){
+  const val = document.getElementById('new-tasktype-val').value.trim();
+  if(!val){ alert('Value required'); return; }
+  await api('/task-type-lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:val})});
+  document.getElementById('new-tasktype-val').value='';
+  loadTaskTypes();
+}
+
+// ─── Generic lookup edit/delete ────────────────────────────
+function openEditLookup(type, item){
+  document.getElementById('editModalTitle').textContent=`Edit ${type==='status'?'Status':'Task Type'}`;
+  document.getElementById('editModalBody').innerHTML=`
+    <div class="form-group"><label>Value</label><input type="text" id="ed-val" value="${item.value}" /></div>
+  `;
+  const path = type==='status'?`/status-lookup/${item.id}`:`/task-type-lookup/${item.id}`;
+  const loader = type==='status'?loadStatuses:loadTaskTypes;
+  document.getElementById('editSaveBtn').onclick=async ()=>{
+    await api(path,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:document.getElementById('ed-val').value.trim()})});
+    closeModal(); loader();
+  };
+  document.getElementById('editModal').classList.add('open');
+}
+
+async function deleteLookup(type, id){
+  if(!confirm('Delete this entry?')) return;
+  const path = type==='status'?`/status-lookup/${id}`:`/task-type-lookup/${id}`;
+  await api(path,{method:'DELETE'});
+  if(type==='status') loadStatuses(); else loadTaskTypes();
+}
+
+// ─── Modal ─────────────────────────────────────────────────
+function closeModal(){ document.getElementById('editModal').classList.remove('open'); }
+document.getElementById('editModal').addEventListener('click',e=>{ if(e.target===document.getElementById('editModal')) closeModal(); });
+
+// ─── Init ──────────────────────────────────────────────────
+loadTeams();
+</script>
+</body>
+</html>
