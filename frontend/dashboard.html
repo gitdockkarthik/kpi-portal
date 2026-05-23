@@ -132,6 +132,13 @@
     <h1>Dashboard</h1>
   </div>
 
+  <div class="filter-bar" style="margin-bottom:20px;">
+    <label>Quarter</label>
+    <select id="dash-period" style="min-width:160px;">
+      <option value="">— All Periods —</option>
+    </select>
+  </div>
+
   <div class="view-tabs">
     <div class="vtab active" data-view="vp">Executive Summary</div>
     <div class="vtab" data-view="kpiprog">KPI Progress</div>
@@ -242,7 +249,7 @@ function progBar(p,r){ return `<div style="display:flex;align-items:center;gap:6
 
 async function api(path){ const r=await fetch(CONFIG.apiBase+path); return r.json(); }
 
-let teams=[], pillars=[], kpis=[];
+let teams=[], pillars=[], kpis=[], periods=[];
 let pillarChartInst=null, teamChartInst=null;
 
 // ─── VP Summary ────────────────────────────────────────────────
@@ -378,24 +385,30 @@ function togglePillar(i){
 async function loadTaskDrill(){
   const tId=document.getElementById('td-team').value;
   const kId=document.getElementById('td-kpi').value;
+  const pId=document.getElementById('dash-period').value;
   let q='?';
   if(tId) q+=`team_id=${tId}&`;
   if(kId) q+=`kpi_id=${kId}&`;
-  const data = await api('/dashboard/task-drill'+q);
+  if(pId) q+=`report_period_id=${pId}&`;
+  const data = await api('/tasks'+q);
   const tbody=document.getElementById('td-tbody');
   if(!data.length){ tbody.innerHTML=`<tr><td colspan="10" class="empty">No tasks found.</td></tr>`; return; }
-  tbody.innerHTML=data.map(t=>`<tr>
-    <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${t.task_name}">${t.task_name}</td>
-    <td><strong style="font-size:.78rem">${t.kpi_code}</strong></td>
-    <td>${t.pillar_code}</td>
-    <td>${t.team_name}</td>
-    <td>${statusBadge(t.status)}</td>
-    <td>${progBar(t.pct_complete, t.rag)}</td>
-    <td>${badge(t.rag)}</td>
-    <td>${t.effort_days??'—'}</td>
-    <td>${t.actual_days??'—'}</td>
-    <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--red);font-size:.77rem;" title="${t.blockers||''}">${t.blockers||''}</td>
-  </tr>`).join('');
+  tbody.innerHTML=data.map(t=>{
+    const pct=parseFloat(t.pct_complete);
+    const r=rag(pct);
+    return `<tr>
+      <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${t.task_name}">${t.task_name}</td>
+      <td><strong style="font-size:.78rem">${t.kpi_code||''}</strong></td>
+      <td>${t.pillar_code||''}</td>
+      <td>${t.team_name||''}</td>
+      <td>${statusBadge(t.status_value||'')}</td>
+      <td>${progBar(pct, r)}</td>
+      <td>${badge(r)}</td>
+      <td>${t.effort_days??'—'}</td>
+      <td>${t.actual_days??'—'}</td>
+      <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--red);font-size:.77rem;" title="${t.blockers||''}">${t.blockers||''}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ─── Blocked & At Risk ────────────────────────────────────────
@@ -441,9 +454,18 @@ document.querySelectorAll('.vtab').forEach(t=>{
 
 // ─── Init lookups ─────────────────────────────────────────────
 async function initLookups(){
-  [teams, pillars, kpis] = await Promise.all([
-    api('/teams'), api('/pillars'), api('/kpis'),
+  [teams, pillars, kpis, periods] = await Promise.all([
+    api('/teams'), api('/pillars'), api('/kpis'), api('/report-periods'),
   ]);
+  // Quarter filter
+  document.getElementById('dash-period').innerHTML =
+    '<option value="">— All Periods —</option>'+
+    periods.map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
+  document.getElementById('dash-period').addEventListener('change', ()=>{
+    const v = document.querySelector('.vtab.active')?.dataset.view;
+    if(v) loaders[v]();
+  });
+
   // KPI progress filters
   document.getElementById('kp-pillar').innerHTML =
     '<option value="">All Pillars</option>'+pillars.map(p=>`<option value="${p.id}">${p.code} – ${p.name}</option>`).join('');
