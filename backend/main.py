@@ -11,7 +11,7 @@ from schemas import (
     PillarOut, PillarCreate, PillarUpdate,
     TeamOut, TeamCreate, TeamUpdate,
     KPIOut, KPICreate, KPIUpdate,
-    ReportPeriodOut, ReportPeriodCreate,
+    ReportPeriodOut, ReportPeriodCreate, ReportPeriodUpdate,
     LookupItem,
     TaskOut, TaskCreate, TaskUpdate,
     VPSummary, RAGItem, KPIProgress, PillarViewItem, TaskDrillItem, BlockedAtRisk,
@@ -384,6 +384,19 @@ async def list_periods(db: AsyncSession = Depends(get_db)):
 async def create_period(body: ReportPeriodCreate, db: AsyncSession = Depends(get_db)):
     rp = ReportPeriod(**body.model_dump())
     db.add(rp)
+    await db.commit()
+    await db.refresh(rp)
+    return rp
+
+
+@app.put("/report-periods/{period_id}", response_model=ReportPeriodOut)
+async def update_period(period_id: int, body: ReportPeriodUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ReportPeriod).where(ReportPeriod.id == period_id))
+    rp = result.scalar_one_or_none()
+    if not rp:
+        raise HTTPException(404, "Report period not found")
+    for k, v in body.model_dump(exclude_none=True).items():
+        setattr(rp, k, v)
     await db.commit()
     await db.refresh(rp)
     return rp

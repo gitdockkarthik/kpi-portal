@@ -38,6 +38,8 @@ class ReportPeriod(Base):
     id          = Column(Integer, primary_key=True)
     period_date = Column(Date, nullable=False)
     label       = Column(String(50), nullable=False)
+    start_date  = Column(Date, nullable=True)
+    end_date    = Column(Date, nullable=True)
     tasks       = relationship("Task", back_populates="report_period")
 
 

@@ -51,11 +51,22 @@ class ReportPeriodOut(BaseModel):
     id:          int
     period_date: date
     label:       str
+    start_date:  Optional[date] = None
+    end_date:    Optional[date] = None
 
 
 class ReportPeriodCreate(BaseModel):
     period_date: date
     label:       str
+    start_date:  Optional[date] = None
+    end_date:    Optional[date] = None
+
+
+class ReportPeriodUpdate(BaseModel):
+    period_date: Optional[date] = None
+    label:       Optional[str] = None
+    start_date:  Optional[date] = None
+    end_date:    Optional[date] = None
 
 
 # ─── KPI ───────────────────────────────────────────────────────────────────
