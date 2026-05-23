@@ -5,9 +5,10 @@ import os
 
 load_dotenv()
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://kpi:kpi@localhost:5432/kpi_portal"
+DATABASE_URL = (
+    os.getenv("DB_URL")
+    or os.getenv("DATABASE_URL")
+    or "postgresql+asyncpg://kpi:kpi@localhost:5432/kpi_portal"
 )
 
 # Railway provides postgresql:// — swap driver for async use
