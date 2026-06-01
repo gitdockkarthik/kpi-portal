@@ -201,7 +201,7 @@
 </div>
 
 <script>
-const CONFIG = { apiBase: 'https://kpi-portal-production.up.railway.app' };
+const CONFIG = { apiBase: 'http://kpi-internal.cloud.operative.com:8000' };
 
 async function api(path, opts={}){
   const r = await fetch(CONFIG.apiBase+path, opts);
