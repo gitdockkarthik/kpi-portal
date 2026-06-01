@@ -76,7 +76,7 @@ class Task(Base):
     created_at       = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at       = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    kpi           = relationship("KPI", back_populates="tasks")
-    report_period = relationship("ReportPeriod", back_populates="tasks")
-    status        = relationship("StatusLookup", back_populates="tasks")
-    task_type     = relationship("TaskTypeLookup", back_populates="tasks")
+    kpi           = relationship("KPI", back_populates="tasks", lazy="selectin")
+    report_period = relationship("ReportPeriod", back_populates="tasks", lazy="selectin")
+    status        = relationship("StatusLookup", back_populates="tasks", lazy="selectin")
+    task_type     = relationship("TaskTypeLookup", back_populates="tasks", lazy="selectin")

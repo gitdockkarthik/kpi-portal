@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func, text, update, delete
 from typing import Optional
 from decimal import Decimal
@@ -258,12 +259,22 @@ async def list_tasks(
 
 @app.post("/tasks", response_model=TaskOut)
 async def create_task(body: TaskCreate, db: AsyncSession = Depends(get_db)):
-    t = Task(**body.model_dump())
+    t = Task(**body.model_dump(exclude_none=True))
     db.add(t)
     await db.commit()
-    await db.refresh(t, ["kpi", "status", "task_type", "report_period"])
-    if t.kpi:
-        await db.refresh(t.kpi, ["pillar", "team"])
+    await db.refresh(t)
+    result2 = await db.execute(
+        select(Task)
+        .options(
+            selectinload(Task.kpi).selectinload(KPI.pillar),
+            selectinload(Task.kpi).selectinload(KPI.team),
+            selectinload(Task.status),
+            selectinload(Task.task_type),
+            selectinload(Task.report_period)
+        )
+        .where(Task.id == t.id)
+    )
+    t = result2.scalar_one()
     return TaskOut(**await enrich_task(t))
 
 
@@ -279,9 +290,19 @@ async def update_task(task_id: int, body: TaskUpdate, db: AsyncSession = Depends
     # manually set updated_at
     t.updated_at = func.now()
     await db.commit()
-    await db.refresh(t, ["kpi", "status", "task_type", "report_period"])
-    if t.kpi:
-        await db.refresh(t.kpi, ["pillar", "team"])
+    await db.refresh(t)
+    result2 = await db.execute(
+        select(Task)
+        .options(
+            selectinload(Task.kpi).selectinload(KPI.pillar),
+            selectinload(Task.kpi).selectinload(KPI.team),
+            selectinload(Task.status),
+            selectinload(Task.task_type),
+            selectinload(Task.report_period)
+        )
+        .where(Task.id == task_id)
+    )
+    t = result2.scalar_one()
     return TaskOut(**await enrich_task(t))
 
 
