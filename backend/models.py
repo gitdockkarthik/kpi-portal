@@ -73,6 +73,7 @@ class Task(Base):
     actual_days      = Column(Numeric(6, 2))
     blockers         = Column(Text)
     notes            = Column(Text)
+    owner         = Column(String(100))
     created_at       = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at       = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 

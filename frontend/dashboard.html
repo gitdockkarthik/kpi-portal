@@ -204,10 +204,12 @@
       <select id="td-team"><option value="">All Teams</option></select>
       <label>KPI</label>
       <select id="td-kpi"><option value="">All KPIs</option></select>
+      <label>Owner</label>
+      <select id="td-owner"><option value="">All Owners</option></select>
     </div>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>Task</th><th>KPI</th><th>Pillar</th><th>Team</th><th>Status</th><th>Progress</th><th>RAG</th><th>Effort</th><th>Actual</th><th>Blockers</th></tr></thead>
+        <thead><tr><th>Task</th><th>KPI</th><th>Pillar</th><th>Team</th><th>Owner</th><th>Status</th><th>Progress</th><th>RAG</th><th>Effort</th><th>Actual</th><th>Blockers</th></tr></thead>
         <tbody id="td-tbody"><tr><td colspan="10" class="empty">Loading…</td></tr></tbody>
       </table>
     </div>
@@ -316,18 +318,23 @@ function progBar(p,r){ return `<div style="display:flex;align-items:center;gap:6
 
 async function api(path){ const r=await fetch(CONFIG.apiBase+path); return r.json(); }
 
-let teams=[], pillars=[], kpis=[], periods=[];
+let teams=[], pillars=[], kpis=[], periods=[], allTasks=[];
 let pillarChartInst=null, teamChartInst=null, slippageChartInst=null;
 
 // ─── VP Summary ────────────────────────────────────────────────
 async function loadVP(){
-  const [vp, allTasks, delData] = await Promise.all([
+  const [vp, taskData, delData] = await Promise.all([
     api('/dashboard/vp-summary'),
     api('/tasks'),
     api('/dashboard/delays'),
   ]);
   // 5 status stat cards
   const sc = document.getElementById('vp-stat-cards');
+  allTasks = taskData;
+  document.getElementById('td-owner').innerHTML =
+    '<option value="">All Owners</option>' +
+    [...new Set(allTasks.map(t=>t.owner).filter(Boolean))].sort()
+    .map(o=>`<option value="${o}">${o}</option>`).join('');
   const done     = allTasks.filter(t=>t.status_value==='Done').length;
   const inProg   = allTasks.filter(t=>t.status_value==='In Progress').length;
   const notStart = allTasks.filter(t=>t.status_value==='Not Started').length;
@@ -471,15 +478,19 @@ function togglePillar(i){
 async function loadTaskDrill(){
   const tId=document.getElementById('td-team').value;
   const kId=document.getElementById('td-kpi').value;
+  const oId=document.getElementById('td-owner').value;
   const pId=document.getElementById('dash-period').value;
   let q='?';
   if(tId) q+=`team_id=${tId}&`;
   if(kId) q+=`kpi_id=${kId}&`;
   if(pId) q+=`report_period_id=${pId}&`;
   const data = await api('/tasks'+q);
+  const filtered = data.filter(t =>
+    (!oId || t.owner===oId)
+  );
   const tbody=document.getElementById('td-tbody');
-  if(!data.length){ tbody.innerHTML=`<tr><td colspan="10" class="empty">No tasks found.</td></tr>`; return; }
-  tbody.innerHTML=data.map(t=>{
+  if(!filtered.length){ tbody.innerHTML=`<tr><td colspan="10" class="empty">No tasks found.</td></tr>`; return; }
+  tbody.innerHTML=filtered.map(t=>{
     const pct=parseFloat(t.pct_complete);
     const r=rag(pct);
     const per=periods.find(p=>p.id===t.report_period_id);
@@ -490,6 +501,7 @@ async function loadTaskDrill(){
       <td><strong style="font-size:.78rem">${t.kpi_code||''}</strong></td>
       <td>${t.pillar_code||''}</td>
       <td>${t.team_name||''}</td>
+      <td>${t.owner||'—'}</td>
       <td>${statusBadge(t.status_value||'')}</td>
       <td>${progBar(pct, r)}</td>
       <td>${badge(r)}</td>
@@ -668,6 +680,7 @@ async function initLookups(){
   document.getElementById('kp-team').addEventListener('change', loadKPIProg);
   document.getElementById('td-team').addEventListener('change', loadTaskDrill);
   document.getElementById('td-kpi').addEventListener('change', loadTaskDrill);
+  document.getElementById('td-owner').addEventListener('change', loadTaskDrill);
 }
 
 (async ()=>{

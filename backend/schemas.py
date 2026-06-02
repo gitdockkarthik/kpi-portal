@@ -105,6 +105,7 @@ class KPIUpdate(BaseModel):
 # ─── Task ──────────────────────────────────────────────────────────────────
 
 class TaskOut(BaseModel):
+    owner: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
     id:               int
     kpi_id:           int
@@ -133,6 +134,7 @@ class TaskOut(BaseModel):
 
 
 class TaskCreate(BaseModel):
+    owner: Optional[str] = None
     kpi_id:           int
     report_period_id: int
     task_code:        Optional[str] = None
@@ -149,6 +151,7 @@ class TaskCreate(BaseModel):
 
 
 class TaskUpdate(BaseModel):
+    owner: Optional[str] = None
     kpi_id:           Optional[int] = None
     report_period_id: Optional[int] = None
     task_code:        Optional[str] = None

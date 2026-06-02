@@ -204,6 +204,7 @@
         <div class="form-group"><label>Due Date</label><input type="date" id="due_date" /><div id="due-date-warning" style="display:none;margin-top:5px;padding:6px 9px;background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.4);border-radius:5px;font-size:.74rem;color:#856404;line-height:1.45;"></div></div>
         <div class="form-group full"><label>Blockers</label><textarea id="blockers"></textarea></div>
         <div class="form-group full"><label>Notes</label><textarea id="notes"></textarea></div>
+        <div class="form-group full"><label>Owner</label><input type="text" id="owner" placeholder="e.g. John Smith" /></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -433,6 +434,7 @@ function openTaskModal(task=null){
   document.getElementById('due_date').value     = task?.due_date||'';
   document.getElementById('blockers').value     = task?.blockers||'';
   document.getElementById('notes').value        = task?.notes||'';
+  document.getElementById('owner').value       = task?.owner||'';
 
   // Due-date / quarter-end warning
   const checkDueDateWarning = () => {
@@ -479,6 +481,7 @@ async function saveTask(){
     due_date:         document.getElementById('due_date').value||null,
     blockers:         document.getElementById('blockers').value.trim()||null,
     notes:            document.getElementById('notes').value.trim()||null,
+    owner:            document.getElementById('owner').value.trim()||null,
   };
   if(!body.task_name){alert('Task name is required.');return;}
   try{

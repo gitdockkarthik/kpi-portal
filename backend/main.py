@@ -62,6 +62,7 @@ async def enrich_task(t: Task) -> dict:
         "actual_days": t.actual_days,
         "blockers": t.blockers,
         "notes": t.notes,
+        "owner": t.owner,
         "created_at": t.created_at,
         "updated_at": t.updated_at,
         "status_value": t.status.value if t.status else None,
