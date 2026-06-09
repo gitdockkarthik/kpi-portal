@@ -120,6 +120,10 @@
     <select id="periodFilter" style="min-width:130px;">
       <option value="">— All —</option>
     </select>
+    <label>KPI Code</label>
+    <select id="kpiFilter" style="min-width:180px;">
+      <option value="">— All KPIs —</option>
+    </select>
   </div>
 
   <div class="tabs">
@@ -241,6 +245,10 @@ async function loadLookups(){
   tf.innerHTML='<option value="">— All Teams —</option>'+teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
   const pf=document.getElementById('periodFilter');
   pf.innerHTML='<option value="">— All —</option>'+periods.map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
+  // populate KPI filter
+  const allKpis = await api('/kpis');
+  const kf=document.getElementById('kpiFilter');
+  kf.innerHTML='<option value="">— All KPIs —</option>'+allKpis.map(k=>`<option value="${k.id}">${k.kpi_code} — ${k.kpi_name}</option>`).join('');
 }
 
 // ─── KPI table ────────────────────────────────────────────────
@@ -276,9 +284,11 @@ async function loadKpis(){
 async function loadTasks(){
   const teamId=document.getElementById('teamFilter').value;
   const periodId=document.getElementById('periodFilter').value;
+  const kpiId=document.getElementById('kpiFilter').value;
   let params='?';
   if(teamId) params+=`team_id=${teamId}&`;
   if(periodId) params+=`report_period_id=${periodId}&`;
+  if(kpiId) params+=`kpi_id=${kpiId}&`;
   tasks=await api('/tasks'+params);
 
   const tbody=document.getElementById('taskTbody');
@@ -323,6 +333,7 @@ document.querySelectorAll('.tab').forEach(t=>{
 
 document.getElementById('teamFilter').addEventListener('change', loadCurrent);
 document.getElementById('periodFilter').addEventListener('change', loadTasks);
+document.getElementById('kpiFilter').addEventListener('change', loadTasks);
 
 // ─── KPI Modal ────────────────────────────────────────────────
 function openKpiModal(kpi=null){
